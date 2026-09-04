@@ -71,6 +71,14 @@ export default function FinancesPage() {
     load();
   }
 
+  async function markPaidManually(paymentId: string) {
+    await supabase
+      .from("payments")
+      .update({ status: "paid", paid_at: new Date().toISOString() })
+      .eq("id", paymentId);
+    load();
+  }
+
   const totalOwed = payments
     .filter((p) => p.status !== "paid")
     .reduce((sum, p) => sum + p.amount, 0);
@@ -106,9 +114,19 @@ export default function FinancesPage() {
               <span className="text-ink/70">
                 {p.tenantName ?? "Unassigned"} · {p.type} due {p.due_date}
               </span>
-              <span className={p.status === "paid" ? "text-forest" : "text-clay"}>
-                ${p.amount} — {p.status}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className={p.status === "paid" ? "text-forest" : "text-clay"}>
+                  ${p.amount} — {p.status}
+                </span>
+                {p.status !== "paid" && (
+                  <button
+                    onClick={() => markPaidManually(p.id)}
+                    className="text-xs font-medium text-forest hover:underline"
+                  >
+                    Mark paid manually
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
