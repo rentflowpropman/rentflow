@@ -79,4 +79,6 @@ export type Payment = {
   due_date: string;
   paid_at: string | null;
   status: "due" | "paid" | "late";
+  payment_method: string | null;
+  notes: string | null;
 };
