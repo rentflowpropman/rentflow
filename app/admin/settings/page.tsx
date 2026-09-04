@@ -213,6 +213,8 @@ export default function SettingsPage() {
             <option value="text">Text</option>
             <option value="number">Number</option>
             <option value="textarea">Long text</option>
+            <option value="date">Date</option>
+            <option value="file">File upload</option>
           </select>
           <button onClick={addField} className="btn-primary">
             Add field
@@ -250,7 +252,7 @@ export default function SettingsPage() {
           />
           {uploading && <p className="mt-2 text-xs text-ink/50">Uploading…</p>}
           {templateEditorUrl && (
-            <a
+            
               href={templateEditorUrl}
               target="_blank"
               className="mt-3 inline-block text-sm font-medium text-forest hover:underline"
