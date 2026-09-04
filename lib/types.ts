@@ -91,3 +91,13 @@ export type MaintenanceRequest = {
   status: "open" | "in_progress" | "resolved";
   created_at: string;
 };
+
+export type Expense = {
+  id: string;
+  property_id: string;
+  category: string;
+  vendor: string | null;
+  amount: number;
+  incurred_on: string;
+  notes: string | null;
+};
