@@ -194,6 +194,29 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8">
+      <div className="grid grid-cols-3 gap-4">
+        <div className="card">
+          <p className="text-sm text-ink/50">Total units</p>
+          <p className="mt-1 text-xl font-semibold text-ink">{units.length}</p>
+        </div>
+        <div className="card">
+          <p className="text-sm text-ink/50">Occupied</p>
+          <p className="mt-1 text-xl font-semibold text-forest">
+            {units.filter((u) => u.status === "occupied").length}
+          </p>
+        </div>
+        <div className="card">
+          <p className="text-sm text-ink/50">Occupancy rate</p>
+          <p className="mt-1 text-xl font-semibold text-ink">
+            {units.length === 0
+              ? "—"
+              : `${Math.round(
+                  (units.filter((u) => u.status === "occupied").length / units.length) * 100
+                )}%`}
+          </p>
+        </div>
+      </div>
+
       {applications.length > 0 && (
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink/50">
