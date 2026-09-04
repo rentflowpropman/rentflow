@@ -21,6 +21,7 @@ export default function ApplicationForm({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [files, setFiles] = useState<Record<string, FileList | null>>({});
 
   function update(key: string, value: string) {
     setAnswers((a) => ({ ...a, [key]: value }));
@@ -31,9 +32,35 @@ export default function ApplicationForm({
     setLoading(true);
     setError(null);
 
+    const supabase = createClient();
+
+    // upload any files first, so we have their storage paths ready
+    const documents: Record<string, string[]> = {};
+    for (const field of fields) {
+      if (field.type !== "file") continue;
+      const fileList = files[field.key];
+      if (!fileList || fileList.length === 0) continue;
+
+      const paths: string[] = [];
+      for (const file of Array.from(fileList)) {
+        const path = `${unitId}/${crypto.randomUUID()}-${file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("application-documents")
+          .upload(path, file);
+        if (uploadError) {
+          setLoading(false);
+          setError(`Couldn't upload ${file.name}. Please try again.`);
+          return;
+        }
+        paths.push(path);
+      }
+      documents[field.key] = paths;
+    }
+
     const custom_fields: Record<string, string> = {};
     const known: Record<string, string | number> = {};
     for (const field of fields) {
+      if (field.type === "file") continue;
       const value = answers[field.key] ?? "";
       if (KNOWN_KEYS.includes(field.key)) {
         known[field.key] = field.type === "number" && value ? Number(value) : value;
@@ -42,8 +69,7 @@ export default function ApplicationForm({
       }
     }
 
-    const supabase = createClient();
-    const { error } = await supabase.from("applications").insert({
+    const { error: insertError } = await supabase.from("applications").insert({
       unit_id: unitId,
       applicant_name: name,
       applicant_email: email,
@@ -53,10 +79,11 @@ export default function ApplicationForm({
       references_text: known.references_text || null,
       notes: known.notes || null,
       custom_fields,
+      documents,
     });
 
     setLoading(false);
-    if (error) {
+    if (insertError) {
       setError("Something went wrong submitting your application. Please try again.");
     } else {
       setSubmitted(true);
@@ -96,13 +123,33 @@ export default function ApplicationForm({
         </div>
 
         {fields.map((field) => (
-          <div key={field.key} className={field.type === "textarea" ? "sm:col-span-2" : ""}>
+          <div
+            key={field.key}
+            className={field.type === "textarea" || field.type === "file" ? "sm:col-span-2" : ""}
+          >
             <label className="label">{field.label}</label>
             {field.type === "textarea" ? (
               <textarea
                 required={field.required}
                 className="input"
                 rows={3}
+                value={answers[field.key] ?? ""}
+                onChange={(e) => update(field.key, e.target.value)}
+              />
+            ) : field.type === "file" ? (
+              <input
+                type="file"
+                required={field.required}
+                multiple
+                accept="image/*,.pdf"
+                className="text-sm"
+                onChange={(e) => setFiles((f) => ({ ...f, [field.key]: e.target.files }))}
+              />
+            ) : field.type === "date" ? (
+              <input
+                type="date"
+                required={field.required}
+                className="input"
                 value={answers[field.key] ?? ""}
                 onChange={(e) => update(field.key, e.target.value)}
               />
