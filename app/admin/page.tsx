@@ -396,7 +396,7 @@ export default function AdminDashboard() {
                             {unit.status}
                           </span>
                           <div className="flex items-center gap-3">
-                            
+                            <a
                               href={`/apply/${unit.id}`}
                               target="_blank"
                               className="text-xs font-medium text-forest hover:underline"
