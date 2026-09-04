@@ -44,6 +44,8 @@ export type Settings = {
   documenso_template_id: string | null;
   lease_template_url: string | null;
 };
+
+export type Tenant = {
   id: string;
   user_id: string | null;
   full_name: string;
