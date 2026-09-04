@@ -93,6 +93,17 @@ export default function AdminDashboard() {
     loadAll();
   }
 
+  async function viewDocument(path: string) {
+    const { data, error } = await supabase.storage
+      .from("application-documents")
+      .createSignedUrl(path, 60);
+    if (error || !data?.signedUrl) {
+      alert("Couldn't open that document. Please try again.");
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
+  }
+
   async function addProperty(formData: FormData) {
     await supabase.from("properties").insert({
       name: formData.get("name"),
@@ -139,6 +150,22 @@ export default function AdminDashboard() {
                         .map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`)
                         .join(" · ")}
                     </p>
+                  )}
+                  {Object.entries(app.documents ?? {}).length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-x-3 text-xs">
+                      {Object.entries(app.documents).map(([key, paths]) =>
+                        paths.map((path, i) => (
+                          <button
+                            key={path}
+                            onClick={() => viewDocument(path)}
+                            className="font-medium text-forest hover:underline"
+                          >
+                            View {key.replace(/_/g, " ")}
+                            {paths.length > 1 ? ` (${i + 1})` : ""} ↗
+                          </button>
+                        ))
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="flex gap-2">
@@ -252,7 +279,7 @@ export default function AdminDashboard() {
                             </span>
                           </td>
                           <td className="py-2 text-right">
-                            <a
+                            
                               href={`/apply/${unit.id}`}
                               target="_blank"
                               className="text-xs font-medium text-forest hover:underline"
