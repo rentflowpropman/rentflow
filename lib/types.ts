@@ -28,6 +28,7 @@ export type Application = {
   references_text: string | null;
   notes: string | null;
   custom_fields: Record<string, string>;
+  documents: Record<string, string[]>;
   status: "pending" | "approved" | "denied";
   created_at: string;
 };
@@ -35,7 +36,7 @@ export type Application = {
 export type ApplicationField = {
   key: string;
   label: string;
-  type: "text" | "number" | "textarea";
+  type: "text" | "number" | "textarea" | "file" | "date";
   required: boolean;
 };
 
