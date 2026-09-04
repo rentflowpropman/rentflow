@@ -252,7 +252,7 @@ export default function SettingsPage() {
           />
           {uploading && <p className="mt-2 text-xs text-ink/50">Uploading…</p>}
           {templateEditorUrl && (
-            
+            <a
               href={templateEditorUrl}
               target="_blank"
               className="mt-3 inline-block text-sm font-medium text-forest hover:underline"
