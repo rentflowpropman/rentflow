@@ -4,8 +4,31 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Payment, Tenant, Lease, Property } from "@/lib/types";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  CartesianGrid,
+} from "recharts";
 
 type PaymentRow = Payment & { tenantName?: string };
+
+function lastNMonths(n: number) {
+  const months: { key: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({
+      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+      label: d.toLocaleString("en-US", { month: "short" }),
+    });
+  }
+  return months;
+}
 
 export default function FinancesPage() {
   const supabase = createClient();
@@ -87,6 +110,18 @@ export default function FinancesPage() {
     .reduce((sum, p) => sum + p.amount, 0);
   const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
+  // build the last 6 months of collected rent vs expenses for the chart
+  const months = lastNMonths(6);
+  const monthlyData = months.map(({ key, label }) => {
+    const collected = payments
+      .filter((p) => p.status === "paid" && p.paid_at?.slice(0, 7) === key)
+      .reduce((sum, p) => sum + p.amount, 0);
+    const monthExpenses = expenses
+      .filter((e) => e.incurred_on?.slice(0, 7) === key)
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+    return { month: label, Collected: collected, Expenses: monthExpenses, Net: collected - monthExpenses };
+  });
+
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-3 gap-4">
@@ -103,6 +138,28 @@ export default function FinancesPage() {
           <p className="mt-1 text-xl font-semibold text-ink">${totalExpenses.toLocaleString()}</p>
         </div>
       </div>
+
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink/50">
+          Last 6 months
+        </h2>
+        <div className="card" style={{ height: 280 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={monthlyData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#DCD5C4" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#211F1B99" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 12, fill: "#211F1B99" }} axisLine={false} tickLine={false} width={48} />
+              <Tooltip
+                contentStyle={{ fontSize: 12, borderRadius: 6, border: "1px solid #DCD5C4" }}
+                formatter={(value: number) => `$${value.toLocaleString()}`}
+              />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Bar dataKey="Collected" fill="#2F4B3C" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="Expenses" fill="#B5654A" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink/50">
