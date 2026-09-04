@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Payment, Tenant, Lease, Property } from "@/lib/types";
+import type { Payment, Tenant, Lease, Property, Expense } from "@/lib/types";
 import {
   ResponsiveContainer,
   BarChart,
@@ -34,9 +34,10 @@ export default function FinancesPage() {
   const supabase = createClient();
   const router = useRouter();
   const [payments, setPayments] = useState<PaymentRow[]>([]);
-  const [expenses, setExpenses] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [showAddExpense, setShowAddExpense] = useState(false);
+  const [recordingPaymentId, setRecordingPaymentId] = useState<string | null>(null);
 
   async function checkAccess() {
     const {
@@ -94,10 +95,26 @@ export default function FinancesPage() {
     load();
   }
 
-  async function markPaidManually(paymentId: string) {
+  async function recordManualPayment(paymentId: string, formData: FormData) {
+    const paidDate = formData.get("paid_date") as string;
     await supabase
       .from("payments")
-      .update({ status: "paid", paid_at: new Date().toISOString() })
+      .update({
+        status: "paid",
+        paid_at: paidDate ? new Date(paidDate).toISOString() : new Date().toISOString(),
+        payment_method: formData.get("payment_method"),
+        notes: formData.get("notes"),
+      })
+      .eq("id", paymentId);
+    setRecordingPaymentId(null);
+    load();
+  }
+
+  async function markUnpaid(paymentId: string) {
+    if (!confirm("Mark this back as unpaid? Use this if a payment was recorded by mistake.")) return;
+    await supabase
+      .from("payments")
+      .update({ status: "due", paid_at: null, payment_method: null, notes: null })
       .eq("id", paymentId);
     load();
   }
@@ -167,23 +184,83 @@ export default function FinancesPage() {
         </h2>
         <div className="card divide-y divide-line p-0">
           {payments.map((p) => (
-            <div key={p.id} className="flex items-center justify-between p-3 text-sm">
-              <span className="text-ink/70">
-                {p.tenantName ?? "Unassigned"} · {p.type} due {p.due_date}
-              </span>
-              <div className="flex items-center gap-3">
-                <span className={p.status === "paid" ? "text-forest" : "text-clay"}>
-                  ${p.amount} — {p.status}
-                </span>
-                {p.status !== "paid" && (
-                  <button
-                    onClick={() => markPaidManually(p.id)}
-                    className="text-xs font-medium text-forest hover:underline"
-                  >
-                    Mark paid manually
-                  </button>
-                )}
+            <div key={p.id} className="p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-ink/70">
+                    {p.tenantName ?? "Unassigned"} · {p.type} due {p.due_date}
+                  </span>
+                  {p.status === "paid" && (p.payment_method || p.notes) && (
+                    <p className="mt-0.5 text-xs text-ink/50">
+                      {[p.payment_method, p.notes].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={p.status === "paid" ? "text-forest" : "text-clay"}>
+                    ${p.amount} — {p.status}
+                  </span>
+                  {p.status !== "paid" ? (
+                    <button
+                      onClick={() => setRecordingPaymentId(recordingPaymentId === p.id ? null : p.id)}
+                      className="text-xs font-medium text-forest hover:underline"
+                    >
+                      Record payment
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => markUnpaid(p.id)}
+                      className="text-xs font-medium text-ink/50 hover:underline"
+                    >
+                      Undo
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {recordingPaymentId === p.id && (
+                <form
+                  action={(fd) => recordManualPayment(p.id, fd)}
+                  className="mt-3 grid grid-cols-2 gap-2 rounded bg-sand p-3"
+                >
+                  <div>
+                    <label className="label">Date received</label>
+                    <input
+                      name="paid_date"
+                      type="date"
+                      defaultValue={new Date().toISOString().slice(0, 10)}
+                      required
+                      className="input"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">How was it paid?</label>
+                    <select name="payment_method" className="input">
+                      <option value="Cash">Cash</option>
+                      <option value="Check">Check</option>
+                      <option value="E-transfer">E-transfer</option>
+                      <option value="Bank transfer">Bank transfer</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="label">Notes (optional)</label>
+                    <input name="notes" placeholder="e.g. check #204" className="input" />
+                  </div>
+                  <div className="col-span-2 flex gap-2">
+                    <button type="submit" className="btn-primary">
+                      Save payment
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRecordingPaymentId(null)}
+                      className="btn-secondary"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           ))}
         </div>
