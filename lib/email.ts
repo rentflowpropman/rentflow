@@ -34,4 +34,10 @@ export const emailTemplates = {
     html: `<p>Hi ${name},</p>
       <p>We've recorded your ${type} payment of $${amount}. Thanks!</p>`,
   }),
+  rentOverdue: (name: string, amount: number, dueDate: string) => ({
+    subject: "Your rent payment is overdue",
+    html: `<p>Hi ${name},</p>
+      <p>Our records show $${amount} rent due ${dueDate} hasn't been received yet.
+      Please take care of this as soon as you can, or reach out if there's an issue.</p>`,
+  }),
 };

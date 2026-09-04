@@ -82,3 +82,12 @@ export type Payment = {
   payment_method: string | null;
   notes: string | null;
 };
+
+export type MaintenanceRequest = {
+  id: string;
+  tenant_id: string;
+  unit_id: string;
+  description: string;
+  status: "open" | "in_progress" | "resolved";
+  created_at: string;
+};
