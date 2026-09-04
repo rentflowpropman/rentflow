@@ -7,7 +7,9 @@ const NAV = [
   { href: "/admin", label: "Properties" },
   { href: "/admin/tenants", label: "Tenants" },
   { href: "/admin/leases", label: "Leases" },
+  { href: "/admin/maintenance", label: "Maintenance" },
   { href: "/admin/finances", label: "Finances", ownerOnly: true },
+  { href: "/admin/import", label: "Import", ownerOnly: true },
   { href: "/admin/settings", label: "Settings", ownerOnly: true },
 ];
 

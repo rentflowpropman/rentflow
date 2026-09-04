@@ -3,7 +3,15 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { sendEmail, emailTemplates } from "@/lib/email";
-import type { Property, Unit, Application } from "@/lib/types";
+import type { Property, Unit, Application, Lease, Payment, Tenant, MaintenanceRequest } from "@/lib/types";
+
+type Attention = {
+  id: string;
+  level: "red" | "yellow" | "green";
+  text: string;
+  actionLabel: string;
+  onAction: () => void;
+};
 
 export default function AdminDashboard() {
   const supabase = createClient();
@@ -14,6 +22,7 @@ export default function AdminDashboard() {
   const [showAddUnit, setShowAddUnit] = useState<string | null>(null);
   const [editingProperty, setEditingProperty] = useState<string | null>(null);
   const [editingUnit, setEditingUnit] = useState<string | null>(null);
+  const [attention, setAttention] = useState<Attention[]>([]);
 
   async function loadAll() {
     const [{ data: props }, { data: unitsData }, { data: apps }] =
@@ -29,6 +38,75 @@ export default function AdminDashboard() {
     setProperties(props ?? []);
     setUnits(unitsData ?? []);
     setApplications(apps ?? []);
+    loadAttention();
+  }
+
+  async function loadAttention() {
+    const [
+      { data: latePayments },
+      { data: openMaintenance },
+      { data: leases },
+      { data: tenants },
+      { data: allUnits },
+    ] = await Promise.all([
+      supabase.from("payments").select("*").eq("status", "late"),
+      supabase.from("maintenance_requests").select("*").in("status", ["open", "in_progress"]),
+      supabase.from("leases").select("*").eq("status", "signed"),
+      supabase.from("tenants").select("*"),
+      supabase.from("units").select("*"),
+    ]);
+
+    const items: Attention[] = [];
+
+    for (const payment of (latePayments as Payment[]) ?? []) {
+      const lease = leases?.find((l: Lease) => l.id === payment.lease_id);
+      const tenant = tenants?.find((t: Tenant) => t.id === lease?.tenant_id);
+      const unit = allUnits?.find((u: Unit) => u.id === lease?.unit_id);
+      const daysLate = Math.floor(
+        (Date.now() - new Date(payment.due_date).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      items.push({
+        id: `late-${payment.id}`,
+        level: "red",
+        text: `Unit ${unit?.unit_number ?? "?"} — rent ${daysLate}d overdue`,
+        actionLabel: "Send reminder",
+        onAction: async () => {
+          if (!tenant?.email) return;
+          const t = emailTemplates.rentOverdue(tenant.full_name, payment.amount, payment.due_date);
+          await sendEmail(tenant.email, t.subject, t.html);
+          alert(`Reminder sent to ${tenant.full_name}.`);
+        },
+      });
+    }
+
+    for (const req of (openMaintenance as MaintenanceRequest[]) ?? []) {
+      const unit = allUnits?.find((u: Unit) => u.id === req.unit_id);
+      items.push({
+        id: `maint-${req.id}`,
+        level: "red",
+        text: `Unit ${unit?.unit_number ?? "?"} — ${req.description.slice(0, 40)}`,
+        actionLabel: "View",
+        onAction: () => (window.location.href = "/admin/maintenance"),
+      });
+    }
+
+    const in60Days = Date.now() + 60 * 24 * 60 * 60 * 1000;
+    for (const lease of (leases as Lease[]) ?? []) {
+      const endTime = new Date(lease.end_date).getTime();
+      if (endTime > Date.now() && endTime < in60Days) {
+        const unit = allUnits?.find((u: Unit) => u.id === lease.unit_id);
+        const daysLeft = Math.ceil((endTime - Date.now()) / (1000 * 60 * 60 * 24));
+        items.push({
+          id: `lease-${lease.id}`,
+          level: "yellow",
+          text: `Unit ${unit?.unit_number ?? "?"} — lease expires in ${daysLeft} days`,
+          actionLabel: "View lease",
+          onAction: () => (window.location.href = "/admin/leases"),
+        });
+      }
+    }
+
+    setAttention(items);
   }
 
   useEffect(() => {
@@ -194,6 +272,39 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8">
+      {attention.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink/50">
+            Needs your attention
+          </h2>
+          <div className="card divide-y divide-line p-0">
+            {attention.map((item) => (
+              <div key={item.id} className="flex items-center justify-between p-3">
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className={`h-2 w-2 shrink-0 rounded-full ${
+                      item.level === "red"
+                        ? "bg-clay"
+                        : item.level === "yellow"
+                        ? "bg-amber-500"
+                        : "bg-forest"
+                    }`}
+                    style={item.level === "yellow" ? { backgroundColor: "#C17817" } : undefined}
+                  />
+                  <span className="text-sm text-ink">{item.text}</span>
+                </div>
+                <button
+                  onClick={item.onAction}
+                  className="text-xs font-medium text-forest hover:underline"
+                >
+                  {item.actionLabel}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="grid grid-cols-3 gap-4">
         <div className="card">
           <p className="text-sm text-ink/50">Total units</p>
