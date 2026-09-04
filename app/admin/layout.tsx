@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import SignOutButton from "@/components/SignOutButton";
 
 const NAV = [
   { href: "/admin", label: "Properties" },
@@ -38,7 +39,7 @@ export default async function AdminLayout({
       <header className="border-b border-line bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
           <span className="text-lg font-semibold text-ink">RentFlow</span>
-          <nav className="flex gap-1">
+          <nav className="flex items-center gap-1">
             {nav.map((item) => (
               <Link
                 key={item.href}
@@ -48,6 +49,7 @@ export default async function AdminLayout({
                 {item.label}
               </Link>
             ))}
+            <SignOutButton />
           </nav>
         </div>
       </header>
