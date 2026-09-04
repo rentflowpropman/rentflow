@@ -38,7 +38,7 @@ export default async function AdminLayout({
     <div className="min-h-screen">
       <header className="border-b border-line bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-          <span className="text-lg font-semibold text-ink">RentFlow</span>
+          <span className="text-lg font-semibold text-ink">RentalEasier</span>
           <nav className="flex items-center gap-1">
             {nav.map((item) => (
               <Link
